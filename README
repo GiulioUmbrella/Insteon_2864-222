@@ -1,10 +1,10 @@
-Insteon HD WiFI Camera 2864-222
-==
+### Insteon HD WiFI Camera 2864-222
+
 In this brief blogpost we will exploit the Insteon HD Wifi <a href="https://www.amazon.com/Insteon-2864-222-HD-Camera-White/dp/B00Q5XRS8S/ref=sr_1_4?s=hi&ie=UTF8&qid=1522359060&sr=1-4&keywords=insteon+wifi+camera">Camera</a>, model 2864-222.
 Without too much talking, let's start.
 
-Traffic Analysis
-==
+## Traffic Analysis
+
 According to the Insteon WiFI camera manual, it provides an HTTP web interface, which can be found at http://<ip_camera>:34100.
 Though I tried with all the Internet browsers I could think of (Google Chrome, IE, Firefox, Opera and Safari, lynx), I wasn't able to log into the camera to see the video stream.
 After calling the camera tech support, I was told that the necessary browser plugins to login using a web browser were not maintained anymore. Too bad!
@@ -13,8 +13,8 @@ Nonetheless, the HTTP interface was still active and responding, as show in the 
 Note that, the credentials are transmitted in clear text. First bad sign. 
 
 
-Firmware Analysis
-==
+## Firmware Analysis
+
 
 SAY IT'S ARM
 After some research, we found that: 1) the camera firmware is publicly released, though encrypted and 2) the Insteon camera is a rebrand of Foscam.
