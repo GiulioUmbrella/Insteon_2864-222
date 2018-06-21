@@ -1,16 +1,16 @@
-### Insteon HD WiFI Camera 2864-222
+# Finding 0-days in Insteon HD WiFI Camera 2864-222
 
 In this brief blogpost we will exploit the Insteon HD Wifi <a href="https://www.amazon.com/Insteon-2864-222-HD-Camera-White/dp/B00Q5XRS8S/ref=sr_1_4?s=hi&ie=UTF8&qid=1522359060&sr=1-4&keywords=insteon+wifi+camera">Camera</a>, model 2864-222.
+
 Without too much talking, let's start.
 
 ## Traffic Analysis
 
-According on the Insteon WiFI camera manual, it provides an HTTP web interface, which can be found at http://<ip_camera>:34100.
-Though we tried with all the Internet browsers I could think of (Google Chrome, IE, Firefox, Opera and Safari, lynx), we weren't able to log into the camera to see the video stream.
-After calling the camera tech support, we were told that the necessary browser plugins to login using a web browser were not maintained anymore. Too bad!
+According on the Insteon WiFI camera manual, this camera provides an HTTP web interface, which can be accessed at http://<ip_camera>:34100.
+Though we tried with all the Internet browsers we could think of (Google Chrome, IE, Firefox, Opera and Safari, lynx), we weren't able to log into the camera to see the video stream.
+After calling the Insteon support, we were told that the necessary browser plugins to login using a web browser were not maintained anymore. Too bad!
 
-We then opened wireshark to sniff the traffic between the Insteon app and the camera.
-As we can see from the picture below, the HTTP interface was still active and responding.
+We then opened wireshark to sniff the traffic between the Insteon app and the camera, and we found, as we can see from the picture below, that the HTTP interface was still active and responding.
 
 
 ![alt text](https://github.com/badnack/Insteon_2864-222/blob/master/shark.png "Wireshark sniffing")
@@ -21,15 +21,17 @@ First bad sign.
 
 
 ## Firmware Analysis
-After some research, we found that: 1) the camera firmware is publicly released, though encrypted and 2) the Insteon camera is a rebrand of Foscam.
+We then wanted to get our hands on the firmware mounted on the camera.
+After some research, we found that: 1) the camera firmware is publicly avilable, though encrypted and 2) the Insteon camera is a rebrand of Foscam.
 With these information in mind, we downloaded the firmware and successfully decrypted it with one of the known Foscam used passwords.
 After looking at the contained binary files, it became clear that the camera mounts an ARM architecture.
+Among these, we identified the binary named webService, as the binary handling the user-provide requests.
 
-Once opened with the IDA decompiler, we wanted to find the function parsing the URIs parameters. To do this we looked for the known GET keywords we observed during the traffic sniffing phase.
-In particular, we looked for 'usr=root'.
-After finding it, we retrieved all the cross-references this string had.
+Once opened with the IDA decompiler, we proceeded in finding the function parsing the URIs parameters. 
 
-After looking at each one of them, we found the one we were looking for, whose code is reported below.
+To do this we looked for the known GET keywords we observed during the traffic sniffing phase.
+In particular, we looked for the keyword 'usr' as in 'usr=root', and after finding it, we retrieved all the functions refercing such string.
+After looking at each one of these function, we found the one we were looking for, whose code is reported below.
 ```c
 signed int __fastcall get_value_key(const char *user_URI, const char *key_word, _BYTE *dst_buff)
 {
@@ -88,16 +90,16 @@ signed int __fastcall get_value_key(const char *user_URI, const char *key_word, 
 }
 ```
 
-As one can see, the above code parses a given URI, searches for the GET key (e.g., 'usr'), skips the '=' characters and finally copy the value of the key in a provided destination buffer.
-The problem here, is that the length of the destination buffer is not provided, and potentially one could provide a value enough long to overwrite a the provided destination buffer.
-Let's try this out :)
+As we can see, the above code parses a given URI, searches for the GET key (e.g., 'usr'), skips the '=' characters and finally copy the value associate with the considered key in a provided destination buffer.
+The problem here, is that the length of the destination buffer is not provided, let alone check. Therefore, one could potentially provide a value for a the 'usr' key long enough to overwrite any provided destination buffer.
+Let's try this out.
 
 First off, we will retrieve the list of the keywords the firmware accepts, by looking for all the cross-references to the above function, and retrieving the passed keywords.
-Overall there are 789 different instances of this function being called, possibly meaning 789 different unique vulnerabilties.
-We only tested a bunch of them, and all of them worked. For space reasons, and because the exploits look all very similar, here I will report only one of them.
+Overall there are __789 different instances__ of this function being called, possibly meaning __789 different unique vulnerabilties__.
+We only tested and successfully verified only a bunch of them. For space reasons, and because the exploits look all very similar, here I will report only one of them, for which the __CVE-2018-11560__ was assigned.
 
 Among the GET keys accepted by the web-server, there is one called 'remoteIp'.
-Once set by the user, a snippet of the function that retrieves its value is represented below:
+The snippet of the function that retrieves its value, by calling the get_value_key function, is reported below:
 
 ```c
 signed int __fastcall executeCGICmd(int a1, const char *a2)
@@ -129,8 +131,8 @@ signed int __fastcall executeCGICmd(int a1, const char *a2)
  ```
 
 
-As one can see, the destination buffer is as big as 64 bytes, which means that if the value provided for the key 'remoteIp' is longer than 64 characters, the function 'get_value_key' will overflow the buffer v6.
-Moreover, as the last assembly instruction overwrites the value of PC through a pop from the stack (as shown below), one can calculate the offset where the LR should reside on the stack, ad overwrite it with a known value.
+As one can see, the destination buffer is defined as big as 64 bytes, which means that if the value provided for the key 'remoteIp' is longer than 64 characters, the function 'get_value_key' will overflow the buffer v6.
+Moreover, as the last assembly instruction overwrites the value of PC through a pop from the stack (as shown below), one can calculate the offset of the memory value being popped (i.e., the LR register content), and overwrite it with a known value.
 
 ```asm
 loc_2907C
@@ -139,7 +141,8 @@ LDMFD   SP!, {R4-R10,PC}
 ; End of function executeCGICmd
 ```
 
-In particular, we targeted the 'sleep' function.
+To easily prove our exaploit and see its effects, we targeted the 'sleep' function.
+
 The final attack is the following:
 
 ```bash
@@ -147,5 +150,5 @@ time curl --silent --output /dev/null curl 10.250.250.126:34100/cgi-bin/CGIProxy
 ```
 
 The above command, when executed, stalls the camera for no less than 45 second.
-During this time the camera stream become unavailable, which for a WiFi camera I would say it's pretty bad.
+During this time the camera stream become unavailable, which for a WiFi camera I would say it's pretty bad, if you ask me.
 
