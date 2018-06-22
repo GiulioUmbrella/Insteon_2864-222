@@ -1,4 +1,4 @@
-# Finding 0-days in Insteon HD WiFI Camera 2864-222
+# Finding 0-days in Insteon HD WiFI Camera 2864-222 (CVE-2018-11560 and CVE-2018-12640)
 
 In this brief blogpost we will exploit the Insteon HD Wifi <a href="https://www.amazon.com/Insteon-2864-222-HD-Camera-White/dp/B00Q5XRS8S/ref=sr_1_4?s=hi&ie=UTF8&qid=1522359060&sr=1-4&keywords=insteon+wifi+camera">Camera</a>, model 2864-222.
 
