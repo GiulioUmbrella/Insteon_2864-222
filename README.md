@@ -97,6 +97,7 @@ Let's try this out.
 First off, we will retrieve the list of the keywords the firmware accepts, by looking for all the cross-references to the above function, and retrieving the passed keywords.
 Overall there are __789 different instances__ of this function being called, possibly meaning __789 different unique vulnerabilties__.
 We only tested and successfully verified only a bunch of them. For space reasons, and because the exploits look all very similar, here I will report only one of them, for which the __CVE-2018-11560__ was assigned.
+Other bugs related to the GET keywords 'pid', 'pwd' and 'usr' were assigned to __CVE-2018-12640__.
 
 Among the GET keys accepted by the web-server, there is one called 'remoteIp'.
 The snippet of the function that retrieves its value, by calling the get_value_key function, is reported below:
